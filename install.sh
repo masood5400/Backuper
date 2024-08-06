@@ -375,7 +375,7 @@ set_proxy() {
     else
         success "Proxy set: $proxy_https"
     fi
-    
+
     sleep 1
 }
 
@@ -668,7 +668,7 @@ get_caption() {
     echo "$caption
 
 📦  from \$ip
-⚡️  by @ErfJabs"
+⚡️  by @Masood5400"
 }
 
 # Function to send file
