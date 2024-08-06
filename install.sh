@@ -184,6 +184,7 @@ start_simple_backup() {
     backup_template
     backup_name
     backup_cronjob
+    set_proxy
     send_to
     backup_generate
 }
@@ -197,6 +198,7 @@ start_advenced_backup() {
     backup_caption
     backup_password
     backup_compression
+    set_proxy
     send_to
     backup_generate
 }
@@ -362,6 +364,17 @@ backup_compression() {
     sleep 1
 }
 
+set_proxy() {
+    clear
+    print "Set https proxy with Telegram or Discord Connections.\n"
+    input "Enter it now (format: username:password@host:port) or leave empty to skip: " proxy_https
+    if [ -z "$proxy_https" ]; then
+        success "No Proxy provided. Skipping..."
+        proxy_https=""
+    else
+        success "Proxy set: $proxy_https"
+    sleep 1
+}
 
 send_to() {
     clear
@@ -414,13 +427,24 @@ send_to_telegram() {
             error "Invalid chat ID format!"
         else
             log "Checking Telegram bot..."
-            response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://api.telegram.org/bot$bot_token/sendMessage" -d chat_id="$chat_id" -d text="Hi Bro! (test bot)")
-            if [[ "$response" -ne 200 ]]; then
-                error "Invalid bot token or chat ID, or Telegram API error!"
+            if [ -z "$proxy_https" ]; then
+                response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://api.telegram.org/bot$bot_token/sendMessage" -d chat_id="$chat_id" -d text="Hi Bro! (test bot)")
+                if [[ "$response" -ne 200 ]]; then
+                    error "Invalid bot token or chat ID, or Telegram API error!"
+                else
+                    success "Bot token and chat ID are valid."
+                    sleep 1
+                    break
+                fi
             else
-                success "Bot token and chat ID are valid."
-                sleep 1
-                break
+                response=$(curl -x $proxy_https -s -o /dev/null -w "%{http_code}" -X POST "https://api.telegram.org/bot$bot_token/sendMessage" -d chat_id="$chat_id" -d text="Hi Bro! (test bot)")
+                if [[ "$response" -ne 200 ]]; then
+                    error "Invalid bot token or chat ID, or Telegram API error!"
+                else
+                    success "Bot token and chat ID are valid."
+                    sleep 1
+                    break
+                fi
             fi
         fi
     done
@@ -441,13 +465,24 @@ send_to_discord() {
             error "Invalid webhook URL format!"
         else
             log "Checking Discord webhook..."
-            response=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" -d '{"content": "Hi Bro! (test message)"}' "$webhook_url")
-            if [[ "$response" -ne 204 ]]; then
-                error "Invalid webhook URL or Discord API error!"
+            if [ -z "$proxy_https" ]; then
+                response=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" -d '{"content": "Hi Bro! (test message)"}' "$webhook_url")
+                if [[ "$response" -ne 204 ]]; then
+                    error "Invalid webhook URL or Discord API error!"
+                else
+                    success "Webhook URL is valid."
+                    sleep 1
+                    break
+                fi
             else
-                success "Webhook URL is valid."
-                sleep 1
-                break
+                response=$(curl -x $proxy_https -s -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" -d '{"content": "Hi Bro! (test message)"}' "$webhook_url")
+                if [[ "$response" -ne 204 ]]; then
+                    error "Invalid webhook URL or Discord API error!"
+                else
+                    success "Webhook URL is valid."
+                    sleep 1
+                    break
+                fi
             fi
         fi
     done
@@ -585,12 +620,22 @@ backup_generate() {
     local send_limit send_caption send_file
     if [ "$send_to_option" == "1" ]; then  # Telegram
         send_limit=49000000
-        send_caption="curl -F \"chat_id=$chat_id\" -F \"text=\$caption\" \"https://api.telegram.org/bot$bot_token/sendMessage\""
-        send_file="curl -F \"chat_id=$chat_id\" -F \"document=@\$file\" -F \"caption=\$caption\" \"https://api.telegram.org/bot$bot_token/sendDocument\""
+        if [ -z "$proxy_https" ]; then
+            send_caption="curl -F \"chat_id=$chat_id\" -F \"text=\$caption\" \"https://api.telegram.org/bot$bot_token/sendMessage\""
+            send_file="curl -F \"chat_id=$chat_id\" -F \"document=@\$file\" -F \"caption=\$caption\" \"https://api.telegram.org/bot$bot_token/sendDocument\""
+        else
+            send_caption="curl -x $proxy_https -F \"chat_id=$chat_id\" -F \"text=\$caption\" \"https://api.telegram.org/bot$bot_token/sendMessage\""
+            send_file="curl -x $proxy_https -F \"chat_id=$chat_id\" -F \"document=@\$file\" -F \"caption=\$caption\" \"https://api.telegram.org/bot$bot_token/sendDocument\""
+        fi
     elif [ "$send_to_option" == "2" ]; then  # Discord
         send_limit=24000000
-        send_caption="curl -H \"Content-Type: application/json\" -X POST -d '{\"content\": \"\$caption\"}' \"$webhook_url\""
-        send_file="curl -H \"Content-Type: multipart/form-data\" -F \"payload_json={\\\"content\\\":\"\$caption\"}\" -F \"file=@\$file\" \"$webhook_url\""
+        if [ -z "$proxy_https" ]; then
+            send_caption="curl -H \"Content-Type: application/json\" -X POST -d '{\"content\": \"\$caption\"}' \"$webhook_url\""
+            send_file="curl -H \"Content-Type: multipart/form-data\" -F \"payload_json={\\\"content\\\":\"\$caption\"}\" -F \"file=@\$file\" \"$webhook_url\""
+        else
+            send_caption="curl -x $proxy_https -H \"Content-Type: application/json\" -X POST -d '{\"content\": \"\$caption\"}' \"$webhook_url\""
+            send_file="curl -x $proxy_https -H \"Content-Type: multipart/form-data\" -F \"payload_json={\\\"content\\\":\"\$caption\"}\" -F \"file=@\$file\" \"$webhook_url\""
+        fi
     else
         error "Invalid send method selected."
         exit 1
