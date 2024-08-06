@@ -373,6 +373,7 @@ set_proxy() {
         proxy_https=""
     else
         success "Proxy set: $proxy_https"
+    fi
     sleep 1
 }
 
