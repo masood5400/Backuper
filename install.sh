@@ -367,13 +367,15 @@ backup_compression() {
 set_proxy() {
     clear
     print "Set https proxy with Telegram or Discord Connections.\n"
-    input "Enter it now (format: username:password@host:port) or leave empty to skip: " proxy_https
+    input "Enter it now (format: host:port) or leave empty to skip: " proxy_https
+
     if [ -z "$proxy_https" ]; then
         success "No Proxy provided. Skipping..."
         proxy_https=""
     else
         success "Proxy set: $proxy_https"
     fi
+    
     sleep 1
 }
 
