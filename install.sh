@@ -664,10 +664,10 @@ get_backup_name() {
 
 # Function to create caption
 get_caption() {
-    local current_timestamp=\$(get_timestamp)
+    local external_ip=$(curl -s https://api64.ipify.org)
     echo "$caption
 
-📦  from \$ip
+📦  from \${external_ip}
 ⚡️  by @Masood5400"
 }
 
